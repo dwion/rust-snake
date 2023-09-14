@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 // length snake will start at
 const MIN_SNAKE_LEN: usize = 3;
-// might make changable in menu one day
+// might make these changeable one day
 const BOARD_SIZE: Vec2 = Vec2 { x: 21, y: 17 };
 const SNAKE_SPEED: f32 = 0.2;
 
@@ -94,10 +94,6 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-// Before Github:
-// * add comments
-// * separate into files
-// * add more newlines
 // TODO
 // * menu
 // * game over screen
@@ -146,10 +142,9 @@ impl Game {
                 x: self.rng.gen_range(1..=self.settings.board_size.x),
                 y: self.rng.gen_range(1..=self.settings.board_size.y),
             };
-            println!("apple pos: {:?}", apple_pos);
+            // if apple is on snake, regen apple
             for body in self.snake.iter() {
                 if body.pos == apple_pos {
-                    println!("body: {:?}\napple: {:?}", body.pos, apple_pos);
                     continue 'apple;
                 }
             }
@@ -160,8 +155,10 @@ impl Game {
     // returns false if snake cant move (game over)
     fn move_snake(&mut self) -> bool {
         {
+            // move snake head
             let head = &mut self.snake[0];
             head.move_square();
+            // check if snake ate apple
             if head.pos == self.apple {
                 self.score += 1;
                 println!("Score: {}", self.score);
@@ -179,6 +176,7 @@ impl Game {
 
         let mut last = self.snake[0].direction;
         let head_pos = self.snake[0].pos;
+        // move snake body
         for body in self.snake.iter_mut().skip(1) {
             body.move_square();
             let i = body.direction;
@@ -191,19 +189,25 @@ impl Game {
         }
         true
     }
+    // grows snake by one square
     fn grow_snake(&mut self) {
+        // add square to snake
         self.snake.push(self.snake.last().unwrap().clone());
+
         let snake_len = self.snake.len();
         let snake_tail = self.snake.last_mut().unwrap();
+        // move square to end of snake
         snake_tail
             .pos
             .move_direction(snake_tail.direction.opposite());
+        // if snake only has head, repeat last action
         if snake_len == 2 {
             snake_tail
                 .pos
                 .move_direction(snake_tail.direction.opposite());
         }
     }
+    // returns true if the snake left the board
     fn snake_left_board(&self) -> bool {
         let snake_head = self.snake[0];
         let board_size = self.settings.board_size;
@@ -216,35 +220,49 @@ impl Game {
         }
         false
     }
+    // draws the game on screen, does no game logic itself
     fn draw_canvas(&self, canvas: &mut WindowCanvas) -> Result<(), String> {
-        // spaghetti code that works so no touch
         let win_size = canvas.viewport();
         let win_size = Vec2 {
             x: win_size.width(),
             y: win_size.height(),
         };
         let board_size = self.settings.board_size;
+
+        // size of one square
         let mut square_size = (win_size.y - win_size.y / 8 - win_size.y / 20) / board_size.y;
-        let xrect = win_size.x.checked_sub(board_size.x * square_size);
-        let yrect = (win_size.y - win_size.y / 8).checked_sub(board_size.y * square_size);
-        if xrect.is_none() || yrect.is_none() {
-            square_size = (win_size.x - win_size.x / 20) / board_size.x;
+
+        {
+            // game board rectangle location, temporary value, recalculated later
+            let xrect = win_size.x.checked_sub(board_size.x * square_size);
+            let yrect = (win_size.y - win_size.y / 8).checked_sub(board_size.y * square_size);
+            // check for overflow, if it does use different formula for square size
+            if xrect.is_none() || yrect.is_none() {
+                square_size = (win_size.x - win_size.x / 20) / board_size.x;
+            }
         }
 
+        // clear canvas
         canvas.set_draw_color(Color::BLACK);
         canvas.clear();
+
+        // draw rectangle game board is going to be on
+        // serves as border for game board
         canvas.set_draw_color(Color::WHITE);
         canvas.fill_rect(Rect::new(
             0,
-            win_size.y as i32 / 8,
+            win_size.y as i32 / 8,e
             win_size.x,
             win_size.y / 8 * 7,
         ))?;
+
         canvas.set_draw_color(Color::BLACK);
+        // game board location
         let rect_pos = Vec2 {
             x: (win_size.x - board_size.x * square_size) / 2,
             y: ((win_size.y - win_size.y / 8) - board_size.y * square_size) / 2 + win_size.y / 8,
         };
+        // draw game board
         canvas.fill_rect(Rect::new(
             rect_pos.x as i32,
             rect_pos.y as i32,
@@ -253,6 +271,7 @@ impl Game {
         ))?;
 
         let mut snake_rects = Vec::with_capacity(self.snake.len());
+        // calculate the positions of the squares that make the snake
         for body in &self.snake {
             snake_rects.push(Rect::new(
                 (body.pos.x * square_size + rect_pos.x - square_size) as i32,
@@ -261,9 +280,11 @@ impl Game {
                 square_size,
             ));
         }
+        // draw snake
         canvas.set_draw_color(Color::WHITE);
         canvas.fill_rects(&snake_rects)?;
 
+        // draw apple
         canvas.set_draw_color(Color::RED);
         canvas.fill_rect(Rect::new(
             (self.apple.x * square_size + rect_pos.x - square_size) as i32,
@@ -279,6 +300,7 @@ impl Game {
 
 #[derive(Copy, Clone)]
 struct SnakeBody {
+    // position
     pos: Vec2,
     direction: Direction,
 }
@@ -290,7 +312,7 @@ impl SnakeBody {
 }
 
 // x is horisontal, y vertical
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 struct Vec2 {
     x: u32,
     y: u32,
